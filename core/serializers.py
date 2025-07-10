@@ -1,16 +1,34 @@
 from rest_framework import serializers
 from .models import CustomUser, Teacher, Student
 from rest_framework.validators import UniqueValidator
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data.update({
+            'user_id': self.user.id,
+            'username': self.user.username,
+            'role': self.user.role,
+        })
+        return data
 
 
-# ✅ CustomUser Serializer (for reuse if needed)
+# class UserSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = CustomUser
+#         fields = ['id', 'username', 'email', 'role']
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'role']
+        fields = ['id', 'username', 'email', 'password', 'first_name', 'last_name', 'role']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
 
 
-# ✅ Teacher Serializer with full name
+
 class TeacherSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
 
@@ -29,9 +47,29 @@ class TeacherSerializer(serializers.ModelSerializer):
         return f"{obj.user.first_name} {obj.user.last_name}"
 
 
-# ✅ Student Serializer with teacher's full name instead of ID
+# class StudentSerializer(serializers.ModelSerializer):
+#     assigned_teacher = serializers.SerializerMethodField()
+#     student_name = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = Student
+#         fields = [
+#             'id',
+#             'roll_number',
+#             'student_name',
+#             'phone_number',
+#             'student_class',
+#             'date_of_birth',
+#             'admission_date',
+#             'status',
+#             'user',
+#             'assigned_teacher',
+#         ]
 class StudentSerializer(serializers.ModelSerializer):
-    assigned_teacher = serializers.SerializerMethodField()
+    assigned_teacher = serializers.PrimaryKeyRelatedField(
+        queryset=Teacher.objects.all(), write_only=True
+    )
+    assigned_teacher_name = serializers.SerializerMethodField()
     student_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -46,8 +84,19 @@ class StudentSerializer(serializers.ModelSerializer):
             'admission_date',
             'status',
             'user',
-            'assigned_teacher',
+            'assigned_teacher',        # used during POST/PUT
+            'assigned_teacher_name'    # used during GET
         ]
+
+    def get_assigned_teacher_name(self, obj):
+        if obj.assigned_teacher:
+            return f"{obj.assigned_teacher.user.first_name} {obj.assigned_teacher.user.last_name}"
+        return None
+
+    def get_student_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}"
+
+
 
     def get_assigned_teacher(self, obj):
         if obj.assigned_teacher:
@@ -58,7 +107,6 @@ class StudentSerializer(serializers.ModelSerializer):
         return f"{obj.user.first_name} {obj.user.last_name}"
 
 
-# ✅ Minimal Student Serializer (used in teacher's /students/ view)
 class StudentNameSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='user.get_full_name')
 
