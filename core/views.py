@@ -1,17 +1,18 @@
 from django.shortcuts import render
-from rest_framework import viewsets
+from rest_framework import viewsets ,permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-
 from .models import Teacher, Student
 from .serializers import TeacherSerializer, StudentSerializer, StudentNameSerializer
+
+
 
 
 class TeacherViewSet(viewsets.ModelViewSet):
     queryset = Teacher.objects.all()
     serializer_class = TeacherSerializer
+    permission_classes = [permissions.DjangoModelPermissions] 
 
-    # ✅ Custom action to list students assigned to this teacher (only id + name)
     @action(detail=True, methods=['get'])
     def students(self, request, pk=None):
         teacher = self.get_object()
@@ -23,8 +24,9 @@ class TeacherViewSet(viewsets.ModelViewSet):
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
+    permission_classes = [permissions.DjangoModelPermissions] 
+   
 
-    # ✅ Optional query param filter: /api/students/?teacher=2
     def get_queryset(self):
         teacher_id = self.request.query_params.get('teacher')
         if teacher_id:
