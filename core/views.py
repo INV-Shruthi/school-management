@@ -35,8 +35,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
 
 
 class StudentViewSet(viewsets.ModelViewSet):
-    queryset = Student.objects.all()  # ✅ Add this line
-
+    queryset = Student.objects.all()  
     serializer_class = StudentSerializer
     permission_classes = [IsTeacherOrAdmin | IsSelfStudent]
 
@@ -60,11 +59,13 @@ class RegisterUserView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    # permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.IsAdminUser]  # ⛔️ Only admin
+
+    def get_queryset(self):
+        return CustomUser.objects.all()
 
 
 class CustomTokenView(TokenObtainPairView):
