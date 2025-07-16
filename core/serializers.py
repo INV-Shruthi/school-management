@@ -14,10 +14,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 
-# class UserSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = CustomUser
-#         fields = ['id', 'username', 'email', 'role']
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -47,24 +43,7 @@ class TeacherSerializer(serializers.ModelSerializer):
         return f"{obj.user.first_name} {obj.user.last_name}"
 
 
-# class StudentSerializer(serializers.ModelSerializer):
-#     assigned_teacher = serializers.SerializerMethodField()
-#     student_name = serializers.SerializerMethodField()
 
-#     class Meta:
-#         model = Student
-#         fields = [
-#             'id',
-#             'roll_number',
-#             'student_name',
-#             'phone_number',
-#             'student_class',
-#             'date_of_birth',
-#             'admission_date',
-#             'status',
-#             'user',
-#             'assigned_teacher',
-#         ]
 class StudentSerializer(serializers.ModelSerializer):
     assigned_teacher = serializers.PrimaryKeyRelatedField(
         queryset=Teacher.objects.all(), write_only=True
@@ -84,8 +63,8 @@ class StudentSerializer(serializers.ModelSerializer):
             'admission_date',
             'status',
             'user',
-            'assigned_teacher',        # used during POST/PUT
-            'assigned_teacher_name'    # used during GET
+            'assigned_teacher',        
+            'assigned_teacher_name'    
         ]
 
     def get_assigned_teacher_name(self, obj):
