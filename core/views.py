@@ -1,12 +1,14 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action,api_view, permission_classes, parser_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
-import csv
-from django.http import HttpResponse
+import csv , io
+from django.http import HttpResponse,JsonResponse
+from rest_framework.parsers import MultiPartParser
 from .models import Teacher, Student, CustomUser
 from .serializers import (
     TeacherSerializer,
@@ -16,6 +18,7 @@ from .serializers import (
     CustomTokenObtainPairSerializer
 )
 from .permissions import IsAdminOrReadOnly, IsTeacherOrAdmin, IsSelfStudent
+from rest_framework.permissions import IsAuthenticated
 
 class TeacherViewSet(viewsets.ModelViewSet):
     queryset = Teacher.objects.all()
@@ -53,15 +56,11 @@ class TeacherViewSet(viewsets.ModelViewSet):
             ])
         return response
 
-
-
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()  
     serializer_class = StudentSerializer
     permission_classes = [IsTeacherOrAdmin | IsSelfStudent]
     
- 
-
     def get_queryset(self):
         user = self.request.user
         if user.role == 'teacher':
@@ -105,7 +104,6 @@ class StudentViewSet(viewsets.ModelViewSet):
             ])
         return response
         
-
 class RegisterUserView(APIView):
     def post(self, request):
         data = request.data.copy()
@@ -127,3 +125,59 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class CustomTokenView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAdminUser])
+@parser_classes([MultiPartParser])
+def import_students_csv(request):
+    csv_file = request.FILES.get('file')
+
+    if not csv_file or not csv_file.name.endswith('.csv'):
+        return JsonResponse({'error': 'Please upload a valid CSV file.'}, status=400)
+
+    decoded_file = csv_file.read().decode('utf-8')
+    io_string = io.StringIO(decoded_file)
+    reader = csv.DictReader(io_string)
+
+    created_count = 0
+    errors = []
+
+    for idx, row in enumerate(reader, start=1):
+        try:
+            if CustomUser.objects.filter(username=row['username']).exists():
+                errors.append(f"Row {idx}: Username already exists.")
+                continue
+            if CustomUser.objects.filter(email=row['email']).exists():
+                errors.append(f"Row {idx}: Email already exists.")
+                continue
+
+            user = CustomUser.objects.create_user(
+                username=row['username'],
+                email=row['email'],
+                password=row['password'],
+                first_name=row.get('first_name', ''),
+                last_name=row.get('last_name', ''),
+                role='student'
+            )
+
+            teacher = Teacher.objects.get(id=row['assigned_teacher_id'])
+
+            Student.objects.create(
+                user=user,
+                roll_number=row['roll_number'],
+                phone_number=row['phone_number'],
+                student_class=row['student_class'],
+                date_of_birth=row['date_of_birth'],
+                admission_date=row['admission_date'],
+                status=row['status'].lower(),
+                assigned_teacher=teacher
+            )
+            created_count += 1
+
+        except Exception as e:
+            errors.append(f"Row {idx}: {str(e)}")
+
+    return JsonResponse({
+        'message': f'{created_count} students imported successfully.',
+        'errors': errors
+    })
