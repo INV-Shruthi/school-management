@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.views import TokenObtainPairView
+import csv
+from django.http import HttpResponse
 from .models import Teacher, Student, CustomUser
 from .serializers import (
     TeacherSerializer,
@@ -32,12 +34,33 @@ class TeacherViewSet(viewsets.ModelViewSet):
         if user.role == 'teacher':
             return Teacher.objects.filter(user=user)
         return Teacher.objects.all()
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAdminUser])
+    def export_teachers_csv(self, request):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="teachers.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['ID', 'Employee ID', 'Full Name', 'Subject Specialization', 'Date of Joining'])
+
+        for teacher in Teacher.objects.all():
+            full_name = f"{teacher.user.first_name} {teacher.user.last_name}"
+            writer.writerow([
+                teacher.id,
+                teacher.employee_id,
+                full_name,
+                teacher.subject_specialization,
+                teacher.date_of_joining
+            ])
+        return response
+
 
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()  
     serializer_class = StudentSerializer
     permission_classes = [IsTeacherOrAdmin | IsSelfStudent]
+    
+ 
 
     def get_queryset(self):
         user = self.request.user
@@ -47,7 +70,41 @@ class StudentViewSet(viewsets.ModelViewSet):
         elif user.role == 'student':
             return Student.objects.filter(user=user)
         return Student.objects.all()
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def export_students_csv(self, request):
+        user = request.user
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="students.csv"'
 
+        writer = csv.writer(response)
+        writer.writerow(['ID', 'Roll Number', 'Student Name', 'Phone', 'Class', 'DOB', 'Admission Date', 'Assigned Teacher'])
+
+        if user.is_superuser:
+            students = Student.objects.all()
+        elif user.role == 'teacher':
+            teacher = get_object_or_404(Teacher, user=user)
+            students = Student.objects.filter(assigned_teacher=teacher)
+        else:
+            return Response({'detail': 'Not authorized to export student data.'}, status=403)
+
+        for student in students:
+            student_name = f"{student.user.first_name} {student.user.last_name}"
+            teacher_name = (
+                f"{student.assigned_teacher.user.first_name} {student.assigned_teacher.user.last_name}"
+                if student.assigned_teacher else "N/A"
+            )
+            writer.writerow([
+                student.id,
+                student.roll_number,
+                student_name,
+                student.phone_number,
+                student.student_class,
+                student.date_of_birth,
+                student.admission_date,
+                teacher_name
+            ])
+        return response
+        
 
 class RegisterUserView(APIView):
     def post(self, request):
@@ -62,7 +119,7 @@ class RegisterUserView(APIView):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAdminUser]  # ⛔️ Only admin
+    permission_classes = [permissions.IsAdminUser]  
 
     def get_queryset(self):
         return CustomUser.objects.all()
