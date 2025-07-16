@@ -5,9 +5,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import CustomTokenView
 
 router = DefaultRouter()
-router.register('teachers', TeacherViewSet)
-router.register('students', StudentViewSet)
-router.register('users', UserViewSet)
+router.register('teachers', TeacherViewSet, basename='teacher')
+router.register('students', StudentViewSet, basename='student')
+router.register('users', UserViewSet, basename='user')
 
 
 urlpatterns = [
