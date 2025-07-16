@@ -7,6 +7,8 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
 import csv , io
+from django.core.mail import send_mail
+
 from django.http import HttpResponse,JsonResponse
 from rest_framework.parsers import MultiPartParser
 from .models import Teacher, Student, CustomUser
@@ -19,6 +21,10 @@ from .serializers import (
 )
 from .permissions import IsAdminOrReadOnly, IsTeacherOrAdmin, IsSelfStudent
 from rest_framework.permissions import IsAuthenticated
+from itsdangerous import URLSafeTimedSerializer
+from django.conf import settings
+
+serializer = URLSafeTimedSerializer(settings.SECRET_KEY)
 
 class TeacherViewSet(viewsets.ModelViewSet):
     queryset = Teacher.objects.all()
@@ -181,3 +187,44 @@ def import_students_csv(request):
         'message': f'{created_count} students imported successfully.',
         'errors': errors
     })
+
+@api_view(['POST'])
+def send_reset_email(request):
+    email = request.data.get('email')
+    try:
+        user = CustomUser.objects.get(email=email)
+        token = serializer.dumps(email, salt='password-reset')
+        reset_link = f"http://localhost:5173/reset-password/{token}"  # frontend URL
+
+        send_mail(
+            subject="Password Reset",
+            message=f"Hi {user.first_name},\nClick the link to reset your password:\n{reset_link}",
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        return JsonResponse({'message': 'Password reset link sent to your email.'})
+    except CustomUser.DoesNotExist:
+        return JsonResponse({'error': 'Email not registered'}, status=404)
+
+
+@api_view(['POST'])
+def reset_password(request, token):
+    from django.contrib.auth.hashers import make_password
+
+    try:
+        email = serializer.loads(token, salt='password-reset', max_age=3600)
+        user = CustomUser.objects.get(email=email)
+
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+
+        if new_password != confirm_password:
+            return JsonResponse({'error': 'Passwords do not match'}, status=400)
+
+        user.password = make_password(new_password)
+        user.save()
+
+        return JsonResponse({'message': 'Password reset successful.'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
