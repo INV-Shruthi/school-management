@@ -8,16 +8,18 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
 import csv , io
 from django.core.mail import send_mail
-
+from core.permissions import IsTeacherOrAdmin, IsSelfStudent
 from django.http import HttpResponse,JsonResponse
 from rest_framework.parsers import MultiPartParser
-from .models import Teacher, Student, CustomUser
+from .models import Teacher, Student, CustomUser ,Exam, StudentExam
 from .serializers import (
     TeacherSerializer,
     StudentSerializer,
     StudentNameSerializer,
     UserSerializer,
-    CustomTokenObtainPairSerializer
+    CustomTokenObtainPairSerializer,
+    ExamSerializer,
+    StudentExamSerializer
 )
 from .permissions import IsAdminOrReadOnly, IsTeacherOrAdmin, IsSelfStudent
 from rest_framework.permissions import IsAuthenticated
@@ -109,7 +111,63 @@ class StudentViewSet(viewsets.ModelViewSet):
                 teacher_name
             ])
         return response
-        
+
+class ExamViewSet(viewsets.ModelViewSet):
+    queryset = Exam.objects.all()
+    serializer_class = ExamSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.is_superuser:
+            return Exam.objects.all()  
+
+        elif user.role == 'teacher':
+            return Exam.objects.filter(teacher__user=user)  
+
+        elif user.role == 'student':
+            try:
+                student = Student.objects.get(user=user)
+                return Exam.objects.filter(teacher=student.assigned_teacher)  
+            except Student.DoesNotExist:
+                return Exam.objects.none()
+
+        return Exam.objects.none()
+
+class StudentExamViewSet(viewsets.ModelViewSet):
+    queryset = StudentExam.objects.all()
+    serializer_class = StudentExamSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.is_superuser:
+            return StudentExam.objects.all()
+
+        elif user.role == 'student':
+            return StudentExam.objects.filter(student__user=user)
+
+        elif user.role == 'teacher':
+            teacher = get_object_or_404(Teacher, user=user)
+            return StudentExam.objects.filter(student__assigned_teacher=teacher)
+
+        return StudentExam.objects.none()
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        user = request.user
+
+        if user.role == 'teacher' and instance.student.assigned_teacher.user != user:
+            return Response({'detail': 'Not allowed to grade this submission.'}, status=403)
+
+        instance.score = request.data.get('score', instance.score)
+        instance.remarks = request.data.get('remarks', instance.remarks)
+        instance.save()
+        return Response(StudentExamSerializer(instance).data)
+
+
 class RegisterUserView(APIView):
     def post(self, request):
         data = request.data.copy()
@@ -194,7 +252,7 @@ def send_reset_email(request):
     try:
         user = CustomUser.objects.get(email=email)
         token = serializer.dumps(email, salt='password-reset')
-        reset_link = f"http://localhost:5173/reset-password/{token}"  # frontend URL
+        reset_link = f"http://localhost:5173/reset-password/{token}"  
 
         send_mail(
             subject="Password Reset",
@@ -228,3 +286,7 @@ def reset_password(request, token):
         return JsonResponse({'message': 'Password reset successful.'})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+
+

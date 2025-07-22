@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from .models import CustomUser, Teacher, Student
+from .models import CustomUser, Teacher, Student , Exam, Question, StudentExam, StudentAnswer
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -92,3 +93,51 @@ class StudentNameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = ['id', 'name']
+
+
+class QuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Question
+        fields = ['id', 'text']
+
+class ExamSerializer(serializers.ModelSerializer):
+    questions = QuestionSerializer(many=True, write_only=True)
+
+    class Meta:
+        model = Exam
+        fields = ['id', 'title', 'teacher', 'created_at', 'questions']
+        read_only_fields = ['created_at']
+
+    def create(self, validated_data):
+        questions_data = validated_data.pop('questions')
+        exam = Exam.objects.create(**validated_data)
+        for question in questions_data:
+            Question.objects.create(exam=exam, **question)
+        return exam
+
+class StudentAnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudentAnswer
+        fields = ['question', 'answer_text']
+
+class StudentExamSerializer(serializers.ModelSerializer):
+    answers = StudentAnswerSerializer(many=True)
+    score = serializers.IntegerField(required=False)
+    remarks = serializers.CharField(required=False, allow_blank=True)
+
+    class Meta:
+        model = StudentExam
+        fields = ['exam', 'student', 'answers', 'score', 'remarks']
+
+    def create(self, validated_data):
+        answers_data = validated_data.pop('answers')
+        student_exam = StudentExam.objects.create(**validated_data)
+        for ans in answers_data:
+            StudentAnswer.objects.create(student_exam=student_exam, **ans)
+        return student_exam
+
+    def update(self, instance, validated_data):
+        instance.score = validated_data.get('score', instance.score)
+        instance.remarks = validated_data.get('remarks', instance.remarks)
+        instance.save()
+        return instance
