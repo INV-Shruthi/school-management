@@ -1,7 +1,7 @@
 from rest_framework.test import APITestCase, APIClient
 from django.urls import reverse
 from rest_framework import status
-from core.models import CustomUser, Teacher, Student
+from core.models import CustomUser, Teacher, Student, Exam, Question, StudentExam, StudentAnswer
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
 import datetime
@@ -80,3 +80,45 @@ class ViewsTestCase(APITestCase):
         url = reverse('teacher-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+
+    # ---------- Exam ViewSet ----------
+    def test_teacher_can_create_exam(self):
+        self.authenticate(self.teacher_user)
+        url = reverse('exam-list')
+        data = {
+            "title": "Math Final",
+            "teacher": self.teacher.id,  # <-- Add this
+            "questions": [
+                {"text": "What is 2 + 2?", "marks": 2},
+                {"text": "What is 10 - 3?", "marks": 3},
+                {"text": "What is 5 x 6?", "marks": 4},
+                {"text": "What is 15 ÷ 3?", "marks": 1},
+                {"text": "What is 9 + 10?", "marks": 2}
+            ],
+            "assigned_students": [self.student.id]
+        }
+        response = self.client.post(url, data, format='json')
+        print("CREATE EXAM RESPONSE =>", response.data)
+        self.assertEqual(response.status_code, 201)
+
+    # ---------- StudentExam ViewSet ----------
+    def test_student_exam_submission_and_teacher_grading(self):
+        exam = Exam.objects.create(
+            title="Physics Test",
+            teacher=self.teacher
+        )
+        student_exam = StudentExam.objects.create(
+            student=self.student,
+            exam=exam,
+            score=0,
+            remarks=""
+        )
+
+        # Teacher grades it
+        self.authenticate(self.teacher_user)
+        url = reverse('student-exam-detail', kwargs={'pk': student_exam.id})
+        response = self.client.put(url, {'score': 85, 'remarks': "Good work"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['score'], 85)
+
