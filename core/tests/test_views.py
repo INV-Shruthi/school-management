@@ -88,7 +88,7 @@ class ViewsTestCase(APITestCase):
         url = reverse('exam-list')
         data = {
             "title": "Math Final",
-            "teacher": self.teacher.id,  # <-- Add this
+            "teacher": self.teacher.id, 
             "questions": [
                 {"text": "What is 2 + 2?", "marks": 2},
                 {"text": "What is 10 - 3?", "marks": 3},
@@ -115,7 +115,6 @@ class ViewsTestCase(APITestCase):
             remarks=""
         )
 
-        # Teacher grades it
         self.authenticate(self.teacher_user)
         url = reverse('student-exam-detail', kwargs={'pk': student_exam.id})
         response = self.client.put(url, {'score': 85, 'remarks': "Good work"})
