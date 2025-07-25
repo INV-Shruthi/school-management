@@ -1,4 +1,3 @@
-// src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import { useAuth } from './context/AuthContext';
@@ -13,7 +12,6 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   return (
       <Routes>
-        {/* Add both / and /login pointing to the login page */}
         <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/login" element={<LoginPage />} />
         <Route
