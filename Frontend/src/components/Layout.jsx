@@ -45,6 +45,9 @@ const Layout = () => {
             <ListItem button component={Link} to="teachers">
               <ListItemText primary="Teachers" />
             </ListItem>
+            <ListItem button component={Link} to="users">
+              <ListItemText primary="Users"/>
+            </ListItem>
             <ListItem button>
               <Button color="error">Logout</Button>
             </ListItem>

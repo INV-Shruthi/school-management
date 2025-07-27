@@ -9,6 +9,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage"; // ✅ Make sure you 
 import Dashboard from "./pages/Dashboard";
 import Students from "./pages/Students";
 import Teachers from "./pages/Teachers";
+import Users from "./pages/Users";
 import withRole from "./utils/withRole";
 
 const ProtectedRoute = ({ children }) => {
@@ -30,13 +31,14 @@ function App() {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
+          // <ProtectedRoute>
             <Dashboard />
-          </ProtectedRoute>
+          // </ProtectedRoute>
         }
       >
         <Route path="students" element={<Students />} />
         <Route path="teachers" element={<Teachers />} />
+        <Route path="users" element={<Users/>}/>
       </Route>
     </Routes>
   );

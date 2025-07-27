@@ -38,7 +38,7 @@ const TeacherDashboard = () => {
 
 
 const handleSubmitExam = async () => {
-  const stringedToken = localStorage.getItem('authTokens'); // or get from context/store
+  const stringedToken = localStorage.getItem('authTokens'); 
   const authToken =  JSON.parse(stringedToken)
 
   if (!authToken) {

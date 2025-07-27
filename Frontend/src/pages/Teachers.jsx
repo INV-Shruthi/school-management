@@ -1,16 +1,27 @@
 // src/pages/TeachersPage.jsx
-import React, { useEffect } from "react";
 import {
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, TablePagination, Button
+  Button,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
 } from "@mui/material";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTeachers } from "../features/teacherSlice";
-import withRole from "../utils/withRole";
+import AddTeacherForm from "../components/AddTeacherForm";
 
 function Teachers() {
   const dispatch = useDispatch();
-  const { data, page, total, rowsPerPage } = useSelector((state) => state.teachers);
+  const [openTeacher, setOpenTeacher] = useState(false);
+
+  const { data, page, total, rowsPerPage } = useSelector(
+    (state) => state.teachers
+  );
 
   useEffect(() => {
     dispatch(fetchTeachers({ page: 1 }));
@@ -25,7 +36,14 @@ function Teachers() {
       <h2>Teachers</h2>
 
       {/* Only admin can see this */}
-      <AdminRegisterButton />
+      <Button
+        variant="contained"
+        color="secondary"
+        style={{ marginBottom: "10px" }}
+        onClick={() => setOpenTeacher(true)}
+      >
+        Register Teacher
+      </Button>
 
       <TableContainer component={Paper}>
         <Table>
@@ -54,14 +72,16 @@ function Teachers() {
           onPageChange={handleChangePage}
         />
       </TableContainer>
+      <AddTeacherForm
+        open={openTeacher}
+        onClose={() => setOpenTeacher(false)}
+      />
     </div>
   );
 }
 
-const AdminRegisterButton = withRole(["admin"])(() => (
-  <Button variant="contained" color="secondary" style={{ marginBottom: "10px" }}>
-    Register Teacher
-  </Button>
-));
+// const AdminRegisterButton = withRole(["admin"])(() => (
+
+// ));
 
 export default Teachers;
