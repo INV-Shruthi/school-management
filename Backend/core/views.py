@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action,api_view, permission_classes, parser_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth.hashers import make_password
@@ -169,14 +170,15 @@ class StudentExamViewSet(viewsets.ModelViewSet):
 
 
 class RegisterUserView(APIView):
+    permission_classes = [AllowAny]  
     def post(self, request):
         data = request.data.copy()
         data['password'] = make_password(data['password'])
         serializer = UserSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "Registration successful!"}, status=status.HTTP_201_CREATED)
+        return Response({"message": "Registration failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
@@ -247,12 +249,16 @@ def import_students_csv(request):
     })
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def send_reset_email(request):
     email = request.data.get('email')
+    if not email:
+        return JsonResponse({'error': 'Email is required'}, status=400)
+    
     try:
         user = CustomUser.objects.get(email=email)
         token = serializer.dumps(email, salt='password-reset')
-        reset_link = f"http://localhost:5173/reset-password/{token}"  
+        reset_link = f"http://localhost:5173/reset-password/{token}"
 
         send_mail(
             subject="Password Reset",
@@ -261,21 +267,28 @@ def send_reset_email(request):
             recipient_list=[email],
             fail_silently=False,
         )
+
         return JsonResponse({'message': 'Password reset link sent to your email.'})
+
     except CustomUser.DoesNotExist:
         return JsonResponse({'error': 'Email not registered'}, status=404)
 
 
+# -------------------------------
+# Password Reset Using Token View
+# -------------------------------
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def reset_password(request, token):
-    from django.contrib.auth.hashers import make_password
-
     try:
         email = serializer.loads(token, salt='password-reset', max_age=3600)
         user = CustomUser.objects.get(email=email)
 
         new_password = request.data.get('new_password')
         confirm_password = request.data.get('confirm_password')
+
+        if not new_password or not confirm_password:
+            return JsonResponse({'error': 'Both password fields are required'}, status=400)
 
         if new_password != confirm_password:
             return JsonResponse({'error': 'Passwords do not match'}, status=400)
@@ -284,9 +297,9 @@ def reset_password(request, token):
         user.save()
 
         return JsonResponse({'message': 'Password reset successful.'})
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
-
 
 
 
