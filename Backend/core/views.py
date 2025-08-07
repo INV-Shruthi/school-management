@@ -169,24 +169,81 @@ class StudentExamViewSet(viewsets.ModelViewSet):
         return Response(StudentExamSerializer(instance).data)
 
 
-class RegisterUserView(APIView):
-    permission_classes = [AllowAny]  
-    def post(self, request):
-        data = request.data.copy()
-        data['password'] = make_password(data['password'])
-        serializer = UserSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Registration successful!"}, status=status.HTTP_201_CREATED)
-        return Response({"message": "Registration failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+# class RegisterUserView(APIView):
+#     permission_classes = [AllowAny]  
+#     def post(self, request):
+#         data = request.data.copy()
+#         data['password'] = make_password(data['password'])
+#         serializer = UserSerializer(data=data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"message": "Registration successful!"}, status=status.HTTP_201_CREATED)
+#         return Response({"message": "Registration failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAdminUser]  
+    permission_classes = [permissions.IsAdminUser]
 
-    def get_queryset(self):
-        return CustomUser.objects.all()
+    def create(self, request, *args, **kwargs):
+        role = request.data.get('role')
+
+        if role not in ['teacher', 'student', 'admin']:
+            return Response({'error': 'Invalid or missing role'}, status=400)
+
+        # Create base user
+        user_data = {
+            "username": request.data.get("username"),
+            "email": request.data.get("email"),
+            "password": make_password(request.data.get("password")),
+            "first_name": request.data.get("first_name", ""),
+            "last_name": request.data.get("last_name", ""),
+            "role": role
+        }
+
+        user_serializer = UserSerializer(data=user_data)
+        if not user_serializer.is_valid():
+            return Response(user_serializer.errors, status=400)
+
+        user = user_serializer.save()
+
+        if role == "teacher":
+            teacher_data = {
+                "user": user.id,
+                "employee_id": request.data.get("employee_id"),
+                "phone_number": request.data.get("phone_number"),
+                "subject_specialization": request.data.get("subject_specialization"),
+                "date_of_joining": request.data.get("date_of_joining"),
+                "status": request.data.get("status", "active").lower()
+            }
+
+            serializer = TeacherSerializer(data=teacher_data)
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                user.delete()  # rollback
+                return Response(serializer.errors, status=400)
+
+        elif role == "student":
+            student_data = {
+                "user": user.id,
+                "roll_number": request.data.get("roll_number"),
+                "phone_number": request.data.get("phone_number"),
+                "student_class": request.data.get("student_class"),
+                "date_of_birth": request.data.get("date_of_birth"),
+                "admission_date": request.data.get("admission_date"),
+                "status": request.data.get("status", "active").lower(),
+                "assigned_teacher": request.data.get("assigned_teacher")
+            }
+
+            serializer = StudentSerializer(data=student_data)
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                user.delete()  # rollback
+                return Response(serializer.errors, status=400)
+
+        return Response(user_serializer.data, status=status.HTTP_201_CREATED)
 
 
 class CustomTokenView(TokenObtainPairView):

@@ -1,15 +1,23 @@
-import Layout from "../components/Layout";
-import { Typography } from "@mui/material";
+import { useAuth } from '../auth/AuthProvider';
+import { Box, Typography } from '@mui/material';
+import Sidebar from '../components/Sidebar';
+// import StudentList from '../components/StudentList';
+// import TeacherList from '../components/TeacherList';
+import { useState } from 'react';
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const [view, setView] = useState('students');
+
   return (
-    <Layout>
-      <Typography variant="h4" gutterBottom>
-        Welcome to the Dashboard
-      </Typography>
-      <Typography variant="body1">
-        Use the sidebar to navigate between Students and Teachers.
-      </Typography>
-    </Layout>
+    <Box sx={{ display: 'flex' }}>
+      <Sidebar setView={setView} />
+      <Box sx={{ flex: 1, p: 3 }}>
+        <Typography variant="h4" mb={2}>
+          {view === 'students' ? 'Student List' : 'Teacher List'}
+        </Typography>
+        {view === 'students' ? <StudentList /> : <TeacherList />}
+      </Box>
+    </Box>
   );
 }

@@ -35,11 +35,13 @@ class UserSerializer(serializers.ModelSerializer):
 
 class TeacherSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
+    user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
 
     class Meta:
         model = Teacher
         fields = [
             'id',
+            'user',  # add this!
             'employee_id',
             'subject_specialization',
             'date_of_joining',
@@ -51,11 +53,11 @@ class TeacherSerializer(serializers.ModelSerializer):
         return f"{obj.user.first_name} {obj.user.last_name}"
 
 
-
 class StudentSerializer(serializers.ModelSerializer):
     assigned_teacher = serializers.PrimaryKeyRelatedField(
         queryset=Teacher.objects.all(), write_only=True
     )
+    user = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
     assigned_teacher_name = serializers.SerializerMethodField()
     student_name = serializers.SerializerMethodField()
 
