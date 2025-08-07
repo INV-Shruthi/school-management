@@ -41,7 +41,7 @@ class TeacherSerializer(serializers.ModelSerializer):
         model = Teacher
         fields = [
             'id',
-            'user',  # add this!
+            'user', 
             'employee_id',
             'subject_specialization',
             'date_of_joining',

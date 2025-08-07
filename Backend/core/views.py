@@ -32,7 +32,7 @@ serializer = URLSafeTimedSerializer(settings.SECRET_KEY)
 class TeacherViewSet(viewsets.ModelViewSet):
     queryset = Teacher.objects.all()
     serializer_class = TeacherSerializer
-    permission_classes = [IsTeacherOrAdmin]
+    permission_classes = [IsAuthenticated]
 
     @action(detail=True, methods=['get'], permission_classes=[IsTeacherOrAdmin])
     def students(self, request, pk=None):
@@ -68,7 +68,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()  
     serializer_class = StudentSerializer
-    permission_classes = [IsTeacherOrAdmin | IsSelfStudent]
+    permission_classes = [IsAuthenticated | IsSelfStudent]
     
     def get_queryset(self):
         user = self.request.user
