@@ -18,6 +18,8 @@ export default function AddStudentForm({ open, onClose }) {
       date_of_admission: "",
       student_class: "",
       phone_number: "",
+      assigned_teacher:"",
+      user:""
     },
   });
 
@@ -148,6 +150,40 @@ export default function AddStudentForm({ open, onClose }) {
               <TextField
                 {...field}
                 label="Phone Number"
+                fullWidth
+                margin="normal"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
+          />
+
+          {/* Assigned Teacher */}
+          <Controller
+            name="assigned_teacher"
+            control={control}
+            rules={{ required: "Assigned teacher is required" }}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="Assigned Teacher ID"
+                fullWidth
+                margin="normal"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
+          />
+
+          {/* User */}
+          <Controller
+            name="user"
+            control={control}
+            rules={{ required: "User ID is required" }}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="User ID"
                 fullWidth
                 margin="normal"
                 error={!!fieldState.error}

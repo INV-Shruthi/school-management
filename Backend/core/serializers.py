@@ -13,7 +13,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'role': self.user.role
         })
 
- # ✅ Add teacher_id if the logged-in user is a teacher
+ #  Add teacher_id if the logged-in user is a teacher
         if self.user.role == 'teacher':
             try:
                 teacher = Teacher.objects.get(user=self.user)
@@ -58,6 +58,7 @@ class StudentSerializer(serializers.ModelSerializer):
     )
     assigned_teacher_name = serializers.SerializerMethodField()
     student_name = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Student

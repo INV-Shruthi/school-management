@@ -75,6 +75,37 @@ export default function AddUserForm({ open, onClose }) {
             )}
           />
           <Controller
+            name="first_name"
+            control={control}
+            rules={{ required: "first name is required" }}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="First Name"
+                fullWidth
+                margin="normal"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
+          />
+          <Controller
+            name="last_name"
+            control={control}
+            rules={{ required: "Last name is required" }}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="Last Name"
+                fullWidth
+                margin="normal"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
+          />
+
+          <Controller
             name="email"
             control={control}
             rules={{
