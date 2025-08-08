@@ -14,7 +14,6 @@ export default function AddTeacherModal({ open, onClose }) {
     last_name: '',
     role: 'teacher',
     employee_id: '',
-    phone_number: '',
     subject_specialization: '',
     date_of_joining: '',
     status: 'active'
@@ -38,7 +37,7 @@ export default function AddTeacherModal({ open, onClose }) {
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Add Teacher</DialogTitle>
       <DialogContent>
-        {['username', 'email', 'password', 'first_name', 'last_name', 'employee_id', 'phone_number', 'subject_specialization', 'date_of_joining'].map(field => (
+        {['username', 'email', 'password', 'first_name', 'last_name', 'employee_id', 'subject_specialization', 'date_of_joining'].map(field => (
           <TextField
             key={field}
             label={field.replace(/_/g, ' ').toUpperCase()}

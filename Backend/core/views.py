@@ -68,8 +68,9 @@ class TeacherViewSet(viewsets.ModelViewSet):
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()  
     serializer_class = StudentSerializer
-    permission_classes = [IsAuthenticated | IsSelfStudent]
-    
+    # permission_classes = [IsTeacherOrAdmin | IsSelfStudent]
+    permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         user = self.request.user
         if user.role == 'teacher':
