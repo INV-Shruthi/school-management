@@ -1,5 +1,18 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import {
+  Box,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Typography,
+  Pagination,
+} from "@mui/material";
 
 const TeacherList = () => {
   const [teachers, setTeachers] = useState([]);
@@ -27,7 +40,10 @@ const TeacherList = () => {
       setCount(Math.ceil(res.data.count / 5));
       setCurrentPage(pageNumber);
     } catch (err) {
-      console.error("Error fetching teachers:", err.response?.data || err.message);
+      console.error(
+        "Error fetching teachers:",
+        err.response?.data || err.message
+      );
     }
   };
 
@@ -45,7 +61,7 @@ const TeacherList = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          responseType: "blob", // important for file download
+          responseType: "blob",
         }
       );
 
@@ -57,7 +73,10 @@ const TeacherList = () => {
       link.click();
       link.remove();
     } catch (err) {
-      console.error("Error exporting teachers CSV:", err.response?.data || err.message);
+      console.error(
+        "Error exporting teachers CSV:",
+        err.response?.data || err.message
+      );
     }
   };
 
@@ -66,56 +85,67 @@ const TeacherList = () => {
   }, []);
 
   return (
-    <div>
-      <h2>Teachers List</h2>
-      <button onClick={exportCSV} style={{ marginBottom: "10px" }}>
-        Export CSV
-      </button>
-      <table border="1" cellPadding="5" cellSpacing="0">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Employee Id</th>
-            <th>Subject</th>
-            <th>Joining Date</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {teachers.length > 0 ? (
-            teachers.map((teacher) => (
-              <tr key={teacher.id}>
-                <td>{teacher.id}</td>
-                <td>{teacher.full_name}</td>
-                <td>{teacher.employee_id}</td>
-                <td>{teacher.subject_specialization}</td>
-                <td>{teacher.date_of_joining}</td>
-                <td>{teacher.status}</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="6">No teachers found</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+    <Box>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          mb: 2,
+          alignItems: "center",
+        }}
+      >
+        <Typography variant="h5" fontWeight="bold">
+          Teacher List
+        </Typography>
+        <Button variant="outlined" onClick={exportCSV}>
+          Export CSV
+        </Button>
+      </Box>
 
-      {/* Pagination */}
-      <div style={{ marginTop: "10px" }}>
-        {Array.from({ length: count }, (_, i) => i + 1).map((page) => (
-          <button
-            key={page}
-            onClick={() => fetchTeachers(page)}
-            disabled={page === currentPage}
-            style={{ margin: "0 5px" }}
-          >
-            {page}
-          </button>
-        ))}
-      </div>
-    </div>
+      <TableContainer component={Paper} sx={{ boxShadow: 3, borderRadius: 2 }}>
+        <Table>
+          <TableHead>
+            <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+              <TableCell><b>ID</b></TableCell>
+              <TableCell><b>Name</b></TableCell>
+              <TableCell><b>Employee ID</b></TableCell>
+              <TableCell><b>Subject</b></TableCell>
+              <TableCell><b>Joining Date</b></TableCell>
+              <TableCell><b>Status</b></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {teachers.length > 0 ? (
+              teachers.map((teacher) => (
+                <TableRow key={teacher.id} hover>
+                  <TableCell>{teacher.id}</TableCell>
+                  <TableCell>{teacher.full_name}</TableCell>
+                  <TableCell>{teacher.employee_id}</TableCell>
+                  <TableCell>{teacher.subject_specialization}</TableCell>
+                  <TableCell>{teacher.date_of_joining}</TableCell>
+                  <TableCell>{teacher.status}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} align="center">
+                  No teachers found
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Box mt={2} display="flex" justifyContent="center">
+        <Pagination
+          count={count}
+          page={currentPage}
+          onChange={(e, page) => fetchTeachers(page)}
+          color="primary"
+        />
+      </Box>
+    </Box>
   );
 };
 

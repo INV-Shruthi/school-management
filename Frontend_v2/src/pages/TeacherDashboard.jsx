@@ -8,7 +8,7 @@ import {
   Button,
   Drawer,
   List,
-  ListItem,
+  ListItemButton,
   ListItemText,
   Table,
   TableBody,
@@ -38,7 +38,9 @@ export default function TeacherDashboard() {
   const [examTitle, setExamTitle] = useState("");
   const [questions, setQuestions] = useState([{ text: "" }]);
 
-  // Fetch profile
+  const [submissions, setSubmissions] = useState([]);
+
+  // Fetch teacher profile
   useEffect(() => {
     axios.get("/teachers/").then((res) => {
       if (res.data.results?.length) {
@@ -57,9 +59,20 @@ export default function TeacherDashboard() {
       });
   };
 
+  // Fetch student submissions for grading
+  const fetchSubmissions = () => {
+    axios.get("/student-exams/").then((res) => {
+      setSubmissions(res.data.results || []);
+    });
+  };
+
   useEffect(() => {
     if (view === "students") {
       fetchStudents();
+    }
+    if (view === "submissions") {
+      fetchStudents(); // so we can map student ID to name
+      fetchSubmissions();
     }
   }, [view, page, rowsPerPage]);
 
@@ -98,6 +111,17 @@ export default function TeacherDashboard() {
     }
   };
 
+  // Handle grading submission
+  const handleGrade = async (id, score, remarks) => {
+    try {
+      await axios.patch(`/student-exams/${id}/`, { score, remarks });
+      alert("Score updated!");
+      fetchSubmissions();
+    } catch {
+      alert("Failed to update score");
+    }
+  };
+
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>
       {/* Top Bar */}
@@ -121,27 +145,33 @@ export default function TeacherDashboard() {
         }}
       >
         <List>
-          <ListItem
-            button
+          <ListItemButton
             selected={view === "profile"}
             onClick={() => setView("profile")}
           >
             <ListItemText primary="My Profile" />
-          </ListItem>
-          <ListItem
-            button
+          </ListItemButton>
+
+          <ListItemButton
             selected={view === "students"}
             onClick={() => setView("students")}
           >
             <ListItemText primary="Assigned Students" />
-          </ListItem>
-          <ListItem
-            button
+          </ListItemButton>
+
+          <ListItemButton
             selected={view === "createExam"}
             onClick={() => setView("createExam")}
           >
             <ListItemText primary="Create Exam" />
-          </ListItem>
+          </ListItemButton>
+
+          <ListItemButton
+            selected={view === "submissions"}
+            onClick={() => setView("submissions")}
+          >
+            <ListItemText primary="Student Submissions" />
+          </ListItemButton>
         </List>
       </Drawer>
 
@@ -165,7 +195,6 @@ export default function TeacherDashboard() {
             <Typography variant="h5" gutterBottom>
               Assigned Students
             </Typography>
-
             <TableContainer component={Paper}>
               <Table>
                 <TableHead>
@@ -240,6 +269,71 @@ export default function TeacherDashboard() {
                 Create Exam
               </Button>
             </form>
+          </Box>
+        )}
+
+        {view === "submissions" && (
+          <Box>
+            <Typography variant="h5" gutterBottom>
+              Student Submissions
+            </Typography>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Student</TableCell>
+                    <TableCell>Exam</TableCell>
+                    <TableCell>Answers</TableCell>
+                    <TableCell>Score</TableCell>
+                    <TableCell>Remarks</TableCell>
+                    <TableCell>Action</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {submissions.map((sub) => (
+                    <TableRow key={sub.id}>
+                      <TableCell>
+                        {students.find(s => s.id === sub.student)?.student_name || "Unknown"}
+                      </TableCell>
+                      <TableCell>{sub.exam_title}</TableCell>
+                      <TableCell>
+                        {sub.answers.map((ans, idx) => (
+                          <div key={idx} style={{ marginBottom: "8px" }}>
+                            <strong>Q:</strong> {ans.question_text} <br />
+                            <strong>A:</strong> {ans.answer_text}
+                          </div>
+                        ))}
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          defaultValue={sub.score || ""}
+                          onChange={(e) => (sub.score = e.target.value)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          defaultValue={sub.remarks || ""}
+                          onChange={(e) => (sub.remarks = e.target.value)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() =>
+                            handleGrade(sub.id, sub.score, sub.remarks)
+                          }
+                        >
+                          Save
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         )}
       </Box>

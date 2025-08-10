@@ -1,10 +1,23 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import {
+  Box,
+  Typography,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Pagination,
+} from "@mui/material";
 
 const StudentList = () => {
   const [students, setStudents] = useState([]);
   const [count, setCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1); 
 
   const fetchStudents = async (pageNumber = 1) => {
     try {
@@ -17,17 +30,18 @@ const StudentList = () => {
       const res = await axios.get(
         `http://127.0.0.1:8000/api/students/?page=${pageNumber}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       setStudents(res.data.results);
-      setCount(Math.ceil(res.data.count / 5));
+      setCount(Math.ceil(res.data.count / 5)); // Assuming 5 rows per page
       setCurrentPage(pageNumber);
     } catch (err) {
-      console.error("Error fetching students:", err.response?.data || err.message);
+      console.error(
+        "Error fetching students:",
+        err.response?.data || err.message
+      );
     }
   };
 
@@ -42,23 +56,20 @@ const StudentList = () => {
       const res = await axios.get(
         "http://127.0.0.1:8000/api/students/export_students_csv/",
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          responseType: "blob", 
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
         }
       );
 
-      // Create a URL for the file blob
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", "students.csv"); 
+      link.setAttribute("download", "students.csv");
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (err) {
-      console.error("Error exporting CSV:", err.response?.data || err.message);
+      console.error("Error exporting students CSV:", err.response?.data || err.message);
     }
   };
 
@@ -67,60 +78,74 @@ const StudentList = () => {
   }, []);
 
   return (
-    <div>
-      <h2>Student List</h2>
-      <button onClick={exportCSV} style={{ marginBottom: "10px" }}>
-        Export CSV
-      </button>
-      <table border="1" cellPadding="5" cellSpacing="0">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Class</th>
-            <th>Roll No</th>
-            <th>Phone No</th>
-            <th>DOB</th>
-            <th>Admission</th>
-            <th>Assigned Teacher</th>
-          </tr>
-        </thead>
-        <tbody>
-          {students.length > 0 ? (
-            students.map((student) => (
-              <tr key={student.id}>
-                <td>{student.id}</td>
-                <td>{student.student_name}</td>
-                <td>{student.student_class}</td>
-                <td>{student.roll_number}</td>
-                <td>{student.phone_number}</td>
-                <td>{student.date_of_birth}</td>
-                <td>{student.admission_date}</td>
-                <td>{student.assigned_teacher_name}</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="8">No students found</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+    <Box>
+      {/* Header & Export */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          mb: 2,
+          alignItems: "center",
+        }}
+      >
+        <Typography variant="h5" fontWeight="bold">
+          Student List
+        </Typography>
+        <Button variant="outlined" onClick={exportCSV}>
+          Export CSV
+        </Button>
+      </Box>
+
+      {/* Table */}
+      <TableContainer component={Paper} sx={{ boxShadow: 3, borderRadius: 2 }}>
+        <Table>
+          <TableHead>
+            <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+              <TableCell><b>ID</b></TableCell>
+              <TableCell><b>Name</b></TableCell>
+              <TableCell><b>Class</b></TableCell>
+              <TableCell><b>Roll No</b></TableCell>
+              <TableCell><b>Phone No</b></TableCell>
+              <TableCell><b>DOB</b></TableCell>
+              <TableCell><b>Admission</b></TableCell>
+              <TableCell><b>Assigned Teacher</b></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {students.length > 0 ? (
+              students.map((student) => (
+                <TableRow key={student.id} hover>
+                  <TableCell>{student.id}</TableCell>
+                  <TableCell>{student.student_name}</TableCell>
+                  <TableCell>{student.student_class}</TableCell>
+                  <TableCell>{student.roll_number}</TableCell>
+                  <TableCell>{student.phone_number}</TableCell>
+                  <TableCell>{student.date_of_birth}</TableCell>
+                  <TableCell>{student.admission_date}</TableCell>
+                  <TableCell>{student.assigned_teacher_name}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={8} align="center">
+                  No students found
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       {/* Pagination */}
-      <div style={{ marginTop: "10px" }}>
-        {Array.from({ length: count }, (_, i) => i + 1).map((page) => (
-          <button
-            key={page}
-            onClick={() => fetchStudents(page)}
-            disabled={page === currentPage}
-            style={{ margin: "0 5px" }}
-          >
-            {page}
-          </button>
-        ))}
-      </div>
-    </div>
+      <Box mt={2} display="flex" justifyContent="center">
+        <Pagination
+          count={count}
+          page={currentPage}
+          onChange={(e, page) => fetchStudents(page)}
+          color="primary"
+        />
+      </Box>
+    </Box>
   );
 };
 

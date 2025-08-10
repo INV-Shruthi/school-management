@@ -144,18 +144,25 @@ class StudentExamViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        exam_id = self.request.query_params.get('exam')
 
         if user.is_superuser:
-            return StudentExam.objects.all()
+            qs = StudentExam.objects.all()
 
         elif user.role == 'student':
-            return StudentExam.objects.filter(student__user=user)
+            qs = StudentExam.objects.filter(student__user=user)
 
         elif user.role == 'teacher':
             teacher = get_object_or_404(Teacher, user=user)
-            return StudentExam.objects.filter(student__assigned_teacher=teacher)
+            qs = StudentExam.objects.filter(student__assigned_teacher=teacher)
 
-        return StudentExam.objects.none()
+        else:
+            qs = StudentExam.objects.none()
+
+        if exam_id:
+            qs = qs.filter(exam_id=exam_id)
+
+        return qs
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -168,7 +175,6 @@ class StudentExamViewSet(viewsets.ModelViewSet):
         instance.remarks = request.data.get('remarks', instance.remarks)
         instance.save()
         return Response(StudentExamSerializer(instance).data)
-
 
 # class RegisterUserView(APIView):
 #     permission_classes = [AllowAny]  

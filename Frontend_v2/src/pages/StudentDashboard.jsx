@@ -23,7 +23,7 @@ export default function StudentDashboard() {
   const [view, setView] = useState("profile");
   const [profile, setProfile] = useState({});
   const [exams, setExams] = useState([]);
-  const [selectedExam, setSelectedExam] = useState(null);
+  const [openExamId, setOpenExamId] = useState(null); // tracks which exam is open
   const [questions, setQuestions] = useState([]);
   const [examAnswers, setExamAnswers] = useState({});
   const [examStatus, setExamStatus] = useState(null); // finished exam details
@@ -52,20 +52,26 @@ export default function StudentDashboard() {
     navigate("/");
   };
 
-  // Handle exam selection
+  // Fetch exam questions and status
   const handleExamClick = async (exam) => {
-    setSelectedExam(exam);
+    if (openExamId === exam.id) {
+      // collapse if already open
+      setOpenExamId(null);
+      return;
+    }
+
+    setOpenExamId(exam.id);
     setExamStatus(null);
     setQuestions([]);
     setExamAnswers({});
 
     try {
-      // Fetch exam details including questions
-      const examDetail = await axios.get(`student-exams/${student-exam.id}/`);
+      // Get exam detail with questions
+      const examDetail = await axios.get(`exams/${exam.id}/`);
       setQuestions(examDetail.data.questions || []);
 
-      // Check if this student already attempted this exam
-      const res = await axios.get(`student-exams/?exam=${student-exam.id}`);
+      // Check if this student already attempted
+      const res = await axios.get(`student-exams/?exam=${exam.id}`);
       if (res.data.results && res.data.results.length > 0) {
         setExamStatus(res.data.results[0]); // already finished
       } else {
@@ -90,7 +96,7 @@ export default function StudentDashboard() {
   const handleSubmitExam = async () => {
     try {
       const payload = {
-        exam: selectedExam.id,
+        exam: openExamId,
         student: profile.id, // Must be student table ID
         answers: Object.entries(examAnswers).map(([qId, text]) => ({
           question: parseInt(qId),
@@ -103,9 +109,8 @@ export default function StudentDashboard() {
       await axios.post("student-exams/", payload);
       alert("Exam submitted successfully!");
 
-      // Reload exams view
-      setSelectedExam(null);
-      setView("exams");
+      // Reload status
+      handleExamClick(exams.find((e) => e.id === openExamId));
     } catch (err) {
       console.error("Exam submission failed:", err.response?.data || err);
       alert("Failed to submit exam");
@@ -139,7 +144,7 @@ export default function StudentDashboard() {
             disablePadding
             selected={view === "profile"}
             onClick={() => {
-              setSelectedExam(null);
+              setOpenExamId(null);
               setView("profile");
             }}
           >
@@ -152,7 +157,7 @@ export default function StudentDashboard() {
             disablePadding
             selected={view === "exams"}
             onClick={() => {
-              setSelectedExam(null);
+              setOpenExamId(null);
               setView("exams");
             }}
           >
@@ -183,80 +188,78 @@ export default function StudentDashboard() {
         )}
 
         {/* Exams List */}
-        {view === "exams" && !selectedExam && (
+        {view === "exams" && (
           <Box>
             <Typography variant="h5" gutterBottom>
               Available Exams
             </Typography>
             <List component={Paper}>
               {exams.map((exam) => (
-                <ListItemButton key={exam.id} onClick={() => handleExamClick(exam)}>
-                  <ListItemText primary={exam.title} />
-                </ListItemButton>
+                <Box key={exam.id}>
+                  {/* Exam title */}
+                  <ListItemButton onClick={() => handleExamClick(exam)}>
+                    <ListItemText primary={exam.title} />
+                  </ListItemButton>
+
+                  {/* Dropdown content */}
+                  {openExamId === exam.id && (
+                    <Box sx={{ p: 2, borderTop: "1px solid #ccc" }}>
+                      {examStatus ? (
+                        // Already finished
+                        <Paper sx={{ p: 2 }}>
+                          <Typography variant="subtitle1" gutterBottom>
+                            Exam Finished
+                          </Typography>
+                          <p><b>Score:</b> {examStatus.score}</p>
+                          <p><b>Remarks:</b> {examStatus.remarks}</p>
+                          <Typography variant="h6" sx={{ mt: 2 }}>
+                            Your Answers
+                          </Typography>
+                          {examStatus.answers.map((a, i) => (
+                            <Paper key={i} sx={{ p: 1, my: 1 }}>
+                              <p>
+                                <b>Question:</b>{" "}
+                                {questions.find((q) => q.id === a.question)?.text}
+                              </p>
+                              <p>
+                                <b>Your Answer:</b> {a.answer_text}
+                              </p>
+                            </Paper>
+                          ))}
+                        </Paper>
+                      ) : (
+                        // Not yet submitted
+                        <Box>
+                          {questions.map((q) => (
+                            <Paper key={q.id} sx={{ p: 2, mb: 2 }}>
+                              <Typography variant="subtitle1">{q.text}</Typography>
+                              <TextField
+                                fullWidth
+                                multiline
+                                minRows={2}
+                                value={examAnswers[q.id] || ""}
+                                onChange={(e) =>
+                                  handleAnswerChange(q.id, e.target.value)
+                                }
+                              />
+                            </Paper>
+                          ))}
+                          {questions.length > 0 && (
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              onClick={handleSubmitExam}
+                            >
+                              Submit Exam
+                            </Button>
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+                </Box>
               ))}
             </List>
-          </Box>
-        )}
-
-        {/* Exam Detail */}
-        {view === "exams" && selectedExam && (
-          <Box>
-            <Typography variant="h5" gutterBottom>
-              {selectedExam.title}
-            </Typography>
-
-            {/* If already finished */}
-            {examStatus ? (
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Exam Finished
-                </Typography>
-                <p>
-                  <b>Score:</b> {examStatus.score}
-                </p>
-                <p>
-                  <b>Remarks:</b> {examStatus.remarks}
-                </p>
-                <Typography variant="h6" sx={{ mt: 2 }}>
-                  Your Answers
-                </Typography>
-                {examStatus.answers.map((a, i) => (
-                  <Paper key={i} sx={{ p: 1, my: 1 }}>
-                    <p>
-                      <b>Question:</b> {questions.find((q) => q.id === a.question)?.text}
-                    </p>
-                    <p>
-                      <b>Your Answer:</b> {a.answer_text}
-                    </p>
-                  </Paper>
-                ))}
-              </Paper>
-            ) : (
-              /* If not finished */
-              <Box>
-                {questions.map((q) => (
-                  <Paper key={q.id} sx={{ p: 2, mb: 2 }}>
-                    <Typography variant="subtitle1">{q.text}</Typography>
-                    <TextField
-                      fullWidth
-                      multiline
-                      minRows={2}
-                      value={examAnswers[q.id] || ""}
-                      onChange={(e) =>
-                        handleAnswerChange(q.id, e.target.value)
-                      }
-                    />
-                  </Paper>
-                ))}
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSubmitExam}
-                >
-                  Submit Exam
-                </Button>
-              </Box>
-            )}
           </Box>
         )}
       </Box>
