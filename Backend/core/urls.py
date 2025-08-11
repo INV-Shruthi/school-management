@@ -3,7 +3,6 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     TeacherViewSet,
     StudentViewSet,
-    # RegisterUserView,
     UserViewSet,
     import_students_csv,
     CustomTokenView,
@@ -28,7 +27,6 @@ urlpatterns = [
     # Auth
     path('token/', CustomTokenView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    # path('register/', RegisterUserView.as_view(), name='user-register'),
 
     # CSV Import
     path('import/students/', import_students_csv, name='import-students'),

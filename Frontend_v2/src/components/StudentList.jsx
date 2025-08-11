@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axios from '../api/axiosInstance';
 import {
   Box,
   Typography,
@@ -12,55 +12,64 @@ import {
   TableRow,
   Paper,
   Pagination,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  MenuItem,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const StudentList = () => {
   const [students, setStudents] = useState([]);
   const [count, setCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1); 
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editData, setEditData] = useState({});
+  const [teachers, setTeachers] = useState([]);
+
+  const token = localStorage.getItem("access_token");
 
   const fetchStudents = async (pageNumber = 1) => {
     try {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        console.error("No token found — please log in first.");
-        return;
-      }
-
       const res = await axios.get(
-        `http://127.0.0.1:8000/api/students/?page=${pageNumber}`,
+        `students/?page=${pageNumber}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-
       setStudents(res.data.results);
-      setCount(Math.ceil(res.data.count / 5)); // Assuming 5 rows per page
+      setCount(Math.ceil(res.data.count / 5));
       setCurrentPage(pageNumber);
     } catch (err) {
-      console.error(
-        "Error fetching students:",
-        err.response?.data || err.message
-      );
+      console.error("Error fetching students:", err.response?.data || err.message);
+    }
+  };
+
+  const fetchTeachers = async () => {
+    try {
+      const res = await axios.get("teachers/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTeachers(res.data.results || res.data); 
+    } catch (err) {
+      console.error("Error fetching teachers:", err.response?.data || err.message);
     }
   };
 
   const exportCSV = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        console.error("No token found — please log in first.");
-        return;
-      }
-
       const res = await axios.get(
-        "http://127.0.0.1:8000/api/students/export_students_csv/",
+        "students/export_students_csv/",
         {
           headers: { Authorization: `Bearer ${token}` },
           responseType: "blob",
         }
       );
-
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;
@@ -70,6 +79,49 @@ const StudentList = () => {
       link.remove();
     } catch (err) {
       console.error("Error exporting students CSV:", err.response?.data || err.message);
+    }
+  };
+
+  const handleEditOpen = (student) => {
+    setEditData({ ...student });
+    fetchTeachers();
+    setEditOpen(true);
+  };
+
+  const handleEditClose = () => {
+    setEditOpen(false);
+    setEditData({});
+  };
+
+  const handleEditChange = (e) => {
+    setEditData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleEditSave = async () => {
+    try {
+      await axios.put(
+        `students/${editData.id}/`,
+        editData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      handleEditClose();
+      fetchStudents(currentPage);
+    } catch (err) {
+      console.error("Error updating student:", err.response?.data || err.message);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this student?")) return;
+    try {
+      await axios.delete(`students/${id}/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchStudents(currentPage);
+    } catch (err) {
+      console.error("Error deleting student:", err.response?.data || err.message);
     }
   };
 
@@ -89,7 +141,7 @@ const StudentList = () => {
         }}
       >
         <Typography variant="h5" fontWeight="bold">
-          Student List
+          {/* Students */}
         </Typography>
         <Button variant="outlined" onClick={exportCSV}>
           Export CSV
@@ -109,6 +161,7 @@ const StudentList = () => {
               <TableCell><b>DOB</b></TableCell>
               <TableCell><b>Admission</b></TableCell>
               <TableCell><b>Assigned Teacher</b></TableCell>
+              <TableCell><b>Actions</b></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -123,11 +176,19 @@ const StudentList = () => {
                   <TableCell>{student.date_of_birth}</TableCell>
                   <TableCell>{student.admission_date}</TableCell>
                   <TableCell>{student.assigned_teacher_name}</TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleEditOpen(student)} color="primary">
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(student.id)} color="error">
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={9} align="center">
                   No students found
                 </TableCell>
               </TableRow>
@@ -145,6 +206,53 @@ const StudentList = () => {
           color="primary"
         />
       </Box>
+
+      {/* Edit Modal */}
+      <Dialog open={editOpen} onClose={handleEditClose}>
+        <DialogTitle>Edit Student</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+          <TextField
+            name="student_class"
+            label="Class"
+            value={editData.student_class || ""}
+            onChange={handleEditChange}
+          />
+          <TextField
+            name="roll_number"
+            label="Roll Number"
+            value={editData.roll_number || ""}
+            onChange={handleEditChange}
+          />
+          <TextField
+            name="phone_number"
+            label="Phone Number"
+            value={editData.phone_number || ""}
+            onChange={handleEditChange}
+          />
+          <TextField
+            name="date_of_birth"
+            label="Date of Birth"
+            type="date"
+            value={editData.date_of_birth || ""}
+            onChange={handleEditChange}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            name="admission_date"
+            label="Admission Date"
+            type="date"
+            value={editData.admission_date || ""}
+            onChange={handleEditChange}
+            InputLabelProps={{ shrink: true }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditClose}>Cancel</Button>
+          <Button variant="contained" onClick={handleEditSave} color="primary">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

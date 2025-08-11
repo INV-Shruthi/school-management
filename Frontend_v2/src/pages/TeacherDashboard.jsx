@@ -1,4 +1,3 @@
-// src/pages/TeacherDashboard.jsx
 import { useEffect, useState } from "react";
 import {
   AppBar,
@@ -40,7 +39,6 @@ export default function TeacherDashboard() {
 
   const [submissions, setSubmissions] = useState([]);
 
-  // Fetch teacher profile
   useEffect(() => {
     axios.get("/teachers/").then((res) => {
       if (res.data.results?.length) {
@@ -49,7 +47,6 @@ export default function TeacherDashboard() {
     });
   }, []);
 
-  // Fetch paginated students
   const fetchStudents = () => {
     axios
       .get(`/students/?page=${page + 1}&page_size=${rowsPerPage}`)
@@ -59,7 +56,6 @@ export default function TeacherDashboard() {
       });
   };
 
-  // Fetch student submissions for grading
   const fetchSubmissions = () => {
     axios.get("/student-exams/").then((res) => {
       setSubmissions(res.data.results || []);
@@ -71,12 +67,11 @@ export default function TeacherDashboard() {
       fetchStudents();
     }
     if (view === "submissions") {
-      fetchStudents(); // so we can map student ID to name
+      fetchStudents(); 
       fetchSubmissions();
     }
   }, [view, page, rowsPerPage]);
 
-  // Logout handler
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/");
@@ -111,7 +106,7 @@ export default function TeacherDashboard() {
     }
   };
 
-  // Handle grading submission
+  // Handle grading 
   const handleGrade = async (id, score, remarks) => {
     try {
       await axios.patch(`/student-exams/${id}/`, { score, remarks });

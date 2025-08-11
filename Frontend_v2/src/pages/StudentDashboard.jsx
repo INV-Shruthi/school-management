@@ -1,4 +1,3 @@
-// src/pages/StudentDashboard.jsx
 import { useEffect, useState } from "react";
 import {
   AppBar,
@@ -23,12 +22,12 @@ export default function StudentDashboard() {
   const [view, setView] = useState("profile");
   const [profile, setProfile] = useState({});
   const [exams, setExams] = useState([]);
-  const [openExamId, setOpenExamId] = useState(null); // tracks which exam is open
+  const [openExamId, setOpenExamId] = useState(null); 
   const [questions, setQuestions] = useState([]);
   const [examAnswers, setExamAnswers] = useState({});
-  const [examStatus, setExamStatus] = useState(null); // finished exam details
+  const [examStatus, setExamStatus] = useState(null); 
 
-  // Fetch profile once
+  // Fetch profile 
   useEffect(() => {
     axios.get("students/").then((res) => {
       if (res.data.results && res.data.results.length > 0) {
@@ -37,7 +36,7 @@ export default function StudentDashboard() {
     });
   }, []);
 
-  // Fetch exams when view is "exams"
+  // Fetch exams 
   useEffect(() => {
     if (view === "exams") {
       axios.get("exams/").then((res) => {
@@ -46,16 +45,14 @@ export default function StudentDashboard() {
     }
   }, [view]);
 
-  // Logout
   const handleLogout = () => {
     localStorage.clear();
     navigate("/");
   };
 
-  // Fetch exam questions and status
+  // Fetch exam questions 
   const handleExamClick = async (exam) => {
     if (openExamId === exam.id) {
-      // collapse if already open
       setOpenExamId(null);
       return;
     }
@@ -66,16 +63,13 @@ export default function StudentDashboard() {
     setExamAnswers({});
 
     try {
-      // Get exam detail with questions
       const examDetail = await axios.get(`exams/${exam.id}/`);
       setQuestions(examDetail.data.questions || []);
 
-      // Check if this student already attempted
       const res = await axios.get(`student-exams/?exam=${exam.id}`);
       if (res.data.results && res.data.results.length > 0) {
-        setExamStatus(res.data.results[0]); // already finished
+        setExamStatus(res.data.results[0]); 
       } else {
-        // Prepare empty answers
         const ansObj = {};
         (examDetail.data.questions || []).forEach((q) => {
           ansObj[q.id] = "";
@@ -87,17 +81,15 @@ export default function StudentDashboard() {
     }
   };
 
-  // Handle answer typing
   const handleAnswerChange = (questionId, value) => {
     setExamAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
-  // Submit exam
   const handleSubmitExam = async () => {
     try {
       const payload = {
         exam: openExamId,
-        student: profile.id, // Must be student table ID
+        student: profile.id, 
         answers: Object.entries(examAnswers).map(([qId, text]) => ({
           question: parseInt(qId),
           answer_text: text
@@ -109,7 +101,6 @@ export default function StudentDashboard() {
       await axios.post("student-exams/", payload);
       alert("Exam submitted successfully!");
 
-      // Reload status
       handleExamClick(exams.find((e) => e.id === openExamId));
     } catch (err) {
       console.error("Exam submission failed:", err.response?.data || err);
@@ -170,7 +161,6 @@ export default function StudentDashboard() {
 
       {/* Main Content */}
       <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
-        {/* Profile View */}
         {view === "profile" && (
           <Box>
             <Typography variant="h5" gutterBottom>
@@ -196,16 +186,13 @@ export default function StudentDashboard() {
             <List component={Paper}>
               {exams.map((exam) => (
                 <Box key={exam.id}>
-                  {/* Exam title */}
                   <ListItemButton onClick={() => handleExamClick(exam)}>
                     <ListItemText primary={exam.title} />
                   </ListItemButton>
 
-                  {/* Dropdown content */}
                   {openExamId === exam.id && (
                     <Box sx={{ p: 2, borderTop: "1px solid #ccc" }}>
                       {examStatus ? (
-                        // Already finished
                         <Paper sx={{ p: 2 }}>
                           <Typography variant="subtitle1" gutterBottom>
                             Exam Finished
@@ -228,7 +215,6 @@ export default function StudentDashboard() {
                           ))}
                         </Paper>
                       ) : (
-                        // Not yet submitted
                         <Box>
                           {questions.map((q) => (
                             <Paper key={q.id} sx={{ p: 2, mb: 2 }}>

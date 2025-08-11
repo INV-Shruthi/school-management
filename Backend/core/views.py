@@ -68,7 +68,6 @@ class TeacherViewSet(viewsets.ModelViewSet):
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()  
     serializer_class = StudentSerializer
-    # permission_classes = [IsTeacherOrAdmin | IsSelfStudent]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -176,17 +175,6 @@ class StudentExamViewSet(viewsets.ModelViewSet):
         instance.save()
         return Response(StudentExamSerializer(instance).data)
 
-# class RegisterUserView(APIView):
-#     permission_classes = [AllowAny]  
-#     def post(self, request):
-#         data = request.data.copy()
-#         data['password'] = make_password(data['password'])
-#         serializer = UserSerializer(data=data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response({"message": "Registration successful!"}, status=status.HTTP_201_CREATED)
-#         return Response({"message": "Registration failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
@@ -228,7 +216,7 @@ class UserViewSet(viewsets.ModelViewSet):
             if serializer.is_valid():
                 serializer.save()
             else:
-                user.delete()  # rollback
+                user.delete()  
                 return Response(serializer.errors, status=400)
 
         elif role == "student":
@@ -338,9 +326,8 @@ def send_reset_email(request):
         return JsonResponse({'error': 'Email not registered'}, status=404)
 
 
-# -------------------------------
+
 # Password Reset Using Token View
-# -------------------------------
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reset_password(request, token):

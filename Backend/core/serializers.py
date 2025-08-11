@@ -119,7 +119,6 @@ class ExamSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
 
     def create(self, validated_data):
-        # questions_data = validated_data.pop('questions')
         questions_data = self.initial_data.get('questions', [])
         exam = Exam.objects.create(**validated_data)
         for question in questions_data:
@@ -134,17 +133,13 @@ class StudentAnswerSerializer(serializers.ModelSerializer):
         fields = ['question','question_text', 'answer_text']
 
 class StudentExamSerializer(serializers.ModelSerializer):
-    # answers = StudentAnswerSerializer(many=True)
-    # score = serializers.IntegerField(required=False)
-    # remarks = serializers.CharField(required=False, allow_blank=True)
     student_name = serializers.CharField(source='student.student_name', read_only=True)
     exam_title = serializers.CharField(source='exam.title', read_only=True)
-    answers = StudentAnswerSerializer(many=True)  # include question text too
+    answers = StudentAnswerSerializer(many=True) 
 
 
     class Meta:
         model = StudentExam
-        # fields = ['id','exam', 'student', 'answers', 'score', 'remarks']
         fields = ['id', 'exam', 'exam_title', 'student', 'student_name', 'answers', 'score', 'remarks']
     def create(self, validated_data):
         answers_data = validated_data.pop('answers')
