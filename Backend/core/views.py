@@ -44,8 +44,8 @@ class TeacherViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'teacher':
-            return Teacher.objects.filter(user=user)
-        return Teacher.objects.all()
+            return Teacher.objects.filter(user=user).order_by('-id')
+        return Teacher.objects.all().order_by('-id')
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAdminUser])
     def export_teachers_csv(self, request):
         response = HttpResponse(content_type='text/csv')
@@ -74,10 +74,10 @@ class StudentViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'teacher':
             teacher = get_object_or_404(Teacher, user=user)
-            return Student.objects.filter(assigned_teacher=teacher)
+            return Student.objects.filter(assigned_teacher=teacher).order_by('-id')
         elif user.role == 'student':
-            return Student.objects.filter(user=user)
-        return Student.objects.all()
+            return Student.objects.filter(user=user).order_by('-id')
+        return Student.objects.all().order_by('-id')
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def export_students_csv(self, request):
         user = request.user

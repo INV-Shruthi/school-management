@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from '../api/axiosInstance';
+import axios from "../api/axiosInstance";
 import {
   Box,
   Typography,
@@ -36,17 +36,17 @@ const StudentList = () => {
 
   const fetchStudents = async (pageNumber = 1) => {
     try {
-      const res = await axios.get(
-        `students/?page=${pageNumber}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const res = await axios.get(`students/?page=${pageNumber}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setStudents(res.data.results);
       setCount(Math.ceil(res.data.count / 5));
       setCurrentPage(pageNumber);
     } catch (err) {
-      console.error("Error fetching students:", err.response?.data || err.message);
+      console.error(
+        "Error fetching students:",
+        err.response?.data || err.message
+      );
     }
   };
 
@@ -55,21 +55,21 @@ const StudentList = () => {
       const res = await axios.get("teachers/", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setTeachers(res.data.results || res.data); 
+      setTeachers(res.data.results || res.data);
     } catch (err) {
-      console.error("Error fetching teachers:", err.response?.data || err.message);
+      console.error(
+        "Error fetching teachers:",
+        err.response?.data || err.message
+      );
     }
   };
 
   const exportCSV = async () => {
     try {
-      const res = await axios.get(
-        "students/export_students_csv/",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: "blob",
-        }
-      );
+      const res = await axios.get("students/export_students_csv/", {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;
@@ -78,13 +78,18 @@ const StudentList = () => {
       link.click();
       link.remove();
     } catch (err) {
-      console.error("Error exporting students CSV:", err.response?.data || err.message);
+      console.error(
+        "Error exporting students CSV:",
+        err.response?.data || err.message
+      );
     }
   };
 
   const handleEditOpen = (student) => {
-    setEditData({ ...student });
-    fetchTeachers();
+    setEditData({
+      ...student,
+      assigned_teacher: student.assigned_teacher || "", 
+    });
     setEditOpen(true);
   };
 
@@ -99,17 +104,16 @@ const StudentList = () => {
 
   const handleEditSave = async () => {
     try {
-      await axios.put(
-        `students/${editData.id}/`,
-        editData,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      await axios.put(`students/${editData.id}/`, editData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       handleEditClose();
       fetchStudents(currentPage);
     } catch (err) {
-      console.error("Error updating student:", err.response?.data || err.message);
+      console.error(
+        "Error updating student:",
+        err.response?.data || err.message
+      );
     }
   };
 
@@ -121,12 +125,16 @@ const StudentList = () => {
       });
       fetchStudents(currentPage);
     } catch (err) {
-      console.error("Error deleting student:", err.response?.data || err.message);
+      console.error(
+        "Error deleting student:",
+        err.response?.data || err.message
+      );
     }
   };
 
   useEffect(() => {
     fetchStudents(1);
+    fetchTeachers();
   }, []);
 
   return (
@@ -141,7 +149,7 @@ const StudentList = () => {
         }}
       >
         <Typography variant="h5" fontWeight="bold">
-          {/* Students */}
+          
         </Typography>
         <Button variant="outlined" onClick={exportCSV}>
           Export CSV
@@ -177,10 +185,16 @@ const StudentList = () => {
                   <TableCell>{student.admission_date}</TableCell>
                   <TableCell>{student.assigned_teacher_name}</TableCell>
                   <TableCell>
-                    <IconButton onClick={() => handleEditOpen(student)} color="primary">
+                    <IconButton
+                      onClick={() => handleEditOpen(student)}
+                      color="primary"
+                    >
                       <EditIcon />
                     </IconButton>
-                    <IconButton onClick={() => handleDelete(student.id)} color="error">
+                    <IconButton
+                      onClick={() => handleDelete(student.id)}
+                      color="error"
+                    >
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
@@ -245,6 +259,20 @@ const StudentList = () => {
             onChange={handleEditChange}
             InputLabelProps={{ shrink: true }}
           />
+          {/* Assigned Teacher Dropdown */}
+          <TextField
+            select
+            name="assigned_teacher"
+            label="Assigned Teacher"
+            value={editData.assigned_teacher || ""}
+            onChange={handleEditChange}
+          >
+            {teachers.map((teacher) => (
+              <MenuItem key={teacher.id} value={teacher.id}>
+                {teacher.full_name}
+              </MenuItem>
+            ))}
+          </TextField>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleEditClose}>Cancel</Button>
