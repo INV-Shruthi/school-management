@@ -6,31 +6,72 @@ import {
   AppBar,
   Toolbar,
   IconButton,
-  Button
+  Button,
+  Paper,
+  Container,
+  Divider,
+  Stack,
+  Menu,
+  MenuItem
 } from '@mui/material';
-import Sidebar from '../components/Sidebar';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import AddIcon from '@mui/icons-material/Add';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import MenuIcon from '@mui/icons-material/Menu';
 import StudentList from '../components/StudentList';
 import TeacherList from '../components/TeacherList';
-import AddIcon from '@mui/icons-material/Add';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import AddStudentModal from '../components/AddStudentModal';
 import AddTeacherModal from '../components/AddTeacherModal';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 export default function Dashboard() {
-  const {  logout } = useAuth();
-  const [view, setView] = useState('students');
+  const { logout } = useAuth();
+  const [view, setView] = useState('dashboard');
   const [openModal, setOpenModal] = useState(false);
+  const [graphData, setGraphData] = useState([]);
+  const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
 
-  const handleAddClick = () => {
-    setOpenModal(true);
-  };
+  // Fetch teacher-student counts
+  useEffect(() => {
+    if (view === 'dashboard') {
+      const fetchData = async () => {
+        try {
+          const teachersRes = await axios.get('teachers/');
+          const teachers = teachersRes.data.results || teachersRes.data;
 
-  const handleCloseModal = () => {
-    setOpenModal(false);
-  };
+          const counts = await Promise.all(
+            teachers.map(async (teacher) => {
+              const studentsRes = await axios.get(`teachers/${teacher.id}/students/`);
+              return {
+                name: teacher.full_name,
+                student_count: studentsRes.data.length
+              };
+            })
+          );
+
+          setGraphData(counts);
+        } catch (err) {
+          console.error(err.response?.data || err.message);
+        }
+      };
+
+      fetchData();
+    }
+  }, [view]);
+
+  const handleAddClick = () => setOpenModal(true);
+  const handleCloseModal = () => setOpenModal(false);
 
   const handleLogout = () => {
     logout();
@@ -55,49 +96,106 @@ export default function Dashboard() {
     }
   };
 
+  // Menu Handlers
+  const handleMenuClick = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+  const handleMenuSelect = (option) => {
+    setView(option);
+    setAnchorEl(null);
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* Topbar */}
-      <AppBar position="static">
+      <AppBar position="static" elevation={1}>
         <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Typography variant="h6">Welcome, Admin</Typography>
-          <Button color="inherit" onClick={handleLogout}>
-            Logout
-          </Button>
+          <Typography variant="h6" fontWeight="bold">
+            Admin Dashboard
+          </Typography>
+
+          <Box>
+            <IconButton
+              color="inherit"
+              onClick={handleMenuClick}
+              sx={{ mr: 1 }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+            >
+              <MenuItem onClick={() => handleMenuSelect('dashboard')}>
+                Overview
+              </MenuItem>
+              <MenuItem onClick={() => handleMenuSelect('students')}>
+                Students
+              </MenuItem>
+              <MenuItem onClick={() => handleMenuSelect('teachers')}>
+                Teachers
+              </MenuItem>
+            </Menu>
+
+            <Button color="inherit" onClick={handleLogout}>
+              Logout
+            </Button>
+          </Box>
         </Toolbar>
       </AppBar>
 
-      {/* Main Content */}
-      <Box sx={{ display: 'flex', flexGrow: 1 }}>
-        <Sidebar setView={setView} />
+      {/* Main content */}
+      <Container maxWidth="lg" sx={{ flexGrow: 1, py: 3 }}>
+        <Typography variant="h4" gutterBottom>
+          {view === 'students'
+            ? 'Student Management'
+            : view === 'teachers'
+            ? 'Teacher Management'
+            : 'Allocation Chart'}
+        </Typography>
+        <Divider sx={{ mb: 3 }} />
 
-        <Box sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
-          {/* Title */}
-          <Typography variant="h4" mb={2}>
-            {view === 'students' ? 'Student List' : 'Teacher List'}
-          </Typography>
+      {/* Dashboard Graph */}
+      {view === 'dashboard' && (
+        <Paper
+          sx={{
+            p: 3,
+            height: 400,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          elevation={3}
+        >
+          <ResponsiveContainer width="80%" height="80%">
+            <BarChart data={graphData} barSize={30}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar
+                dataKey="student_count"
+                fill="#1976d2"
+                radius={[6, 6, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </Paper>
+      )}
 
-          {/* List */}
-          <Box sx={{ flexGrow: 1 }}>
-            {view === 'students' ? <StudentList /> : <TeacherList />}
-          </Box>
+        {/* Student / Teacher List */}
+        {view === 'students' && <StudentList />}
+        {view === 'teachers' && <TeacherList />}
 
-          {/* Bottom Actions */}
-          <Box
-            sx={{
-              mt: 2,
-              display: 'flex',
-              justifyContent: 'flex-end',
-              alignItems: 'center',
-              gap: 2
-            }}
-          >
+        {/* Bottom Actions */}
+        {view !== 'dashboard' && (
+          <Stack direction="row" justifyContent="flex-end" spacing={2} mt={3}>
             {view === 'students' && (
               <Button
                 variant="outlined"
                 component="label"
                 startIcon={<UploadFileIcon />}
-                sx={{ textTransform: 'none' }}
               >
                 Import CSV
                 <input
@@ -108,20 +206,28 @@ export default function Dashboard() {
                 />
               </Button>
             )}
-
-            <IconButton color="primary" onClick={handleAddClick}>
+            <IconButton
+              color="primary"
+              onClick={handleAddClick}
+              sx={{
+                bgcolor: 'primary.main',
+                color: 'white',
+                '&:hover': { bgcolor: 'primary.dark' },
+              }}
+            >
               <AddIcon />
             </IconButton>
-          </Box>
+          </Stack>
+        )}
 
-          {/* Conditionally render modals */}
-          {view === 'students' ? (
-            <AddStudentModal open={openModal} onClose={handleCloseModal} />
-          ) : (
-            <AddTeacherModal open={openModal} onClose={handleCloseModal} />
-          )}
-        </Box>
-      </Box>
+        {/* Modals */}
+        {view === 'students' && (
+          <AddStudentModal open={openModal} onClose={handleCloseModal} />
+        )}
+        {view === 'teachers' && (
+          <AddTeacherModal open={openModal} onClose={handleCloseModal} />
+        )}
+      </Container>
     </Box>
   );
 }
