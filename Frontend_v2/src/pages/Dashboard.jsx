@@ -12,7 +12,8 @@ import {
   Divider,
   Stack,
   Menu,
-  MenuItem
+  MenuItem,
+  Grid,
 } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -39,6 +40,8 @@ export default function Dashboard() {
   const [view, setView] = useState('dashboard');
   const [openModal, setOpenModal] = useState(false);
   const [graphData, setGraphData] = useState([]);
+  const [teacherCount, setTeacherCount] = useState(0);
+  const [studentCount, setStudentCount] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
 
@@ -49,17 +52,21 @@ export default function Dashboard() {
         try {
           const teachersRes = await axios.get('teachers/');
           const teachers = teachersRes.data.results || teachersRes.data;
+          setTeacherCount(teachers.length);
 
+          let totalStudents = 0;
           const counts = await Promise.all(
             teachers.map(async (teacher) => {
               const studentsRes = await axios.get(`teachers/${teacher.id}/students/`);
+              totalStudents += studentsRes.data.length;
               return {
                 name: teacher.full_name,
-                student_count: studentsRes.data.length
+                student_count: studentsRes.data.length,
               };
             })
           );
 
+          setStudentCount(totalStudents);
           setGraphData(counts);
         } catch (err) {
           console.error(err.response?.data || err.message);
@@ -151,44 +158,83 @@ export default function Dashboard() {
             ? 'Student Management'
             : view === 'teachers'
             ? 'Teacher Management'
-            : 'Allocation Chart'}
+            : 'Overview'}
         </Typography>
         <Divider sx={{ mb: 3 }} />
 
-      {/* Dashboard Graph */}
-      {view === 'dashboard' && (
-        <Paper
-          sx={{
-            p: 3,
-            height: 400,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-          elevation={3}
-        >
-          <ResponsiveContainer width="80%" height="80%">
-            <BarChart data={graphData} barSize={30}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar
-                dataKey="student_count"
-                fill="#1976d2"
-                radius={[6, 6, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </Paper>
-      )}
+        {/* Dashboard */}
+        {view === 'dashboard' && (
+          <Grid container spacing={15}>
+            {/* Left side - Counts */}
+            <Grid item xs={12} md={4}>
+              <Stack spacing={3}>
+                <Paper
+                  sx={{
+                    p: 3,
+                    textAlign: 'center',
+                    height: 150,
+                    cursor: 'pointer',
+                    transition: '0.3s',
+                    '&:hover': { bgcolor: 'primary.light', color: 'white' },
+                  }}
+                  elevation={3}
+                  onClick={() => setView('teachers')}
+                >
+                  <Typography variant="h6" gutterBottom>
+                    Total Teachers
+                  </Typography>
+                  <Typography variant="h3" color="primary" fontWeight="bold">
+                    {teacherCount}
+                  </Typography>
+                </Paper>
+
+                <Paper
+                  sx={{
+                    p: 3,
+                    textAlign: 'center',
+                    height: 150,
+                    cursor: 'pointer',
+                    transition: '0.3s',
+                    '&:hover': { bgcolor: 'secondary.light', color: 'white' },
+                  }}
+                  elevation={3}
+                  onClick={() => setView('students')}
+                >
+                  <Typography variant="h6" gutterBottom>
+                    Total Students
+                  </Typography>
+                  <Typography variant="h6"></Typography>
+                  <Typography variant="h3" color="secondary" fontWeight="bold">
+                    {studentCount}
+                  </Typography>
+                </Paper>
+              </Stack>
+            </Grid>
+
+            {/* Right side - Chart */}
+            <Grid item xs={12} md={8}>
+                <Typography variant="h5" gutterBottom>
+                  Allocation Map
+                </Typography>
+                <Box sx={{ width: '300%', height: '100%' }}>
+                  <ResponsiveContainer width="90%" height="90%">
+                    <BarChart data={graphData}>
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="student_count" fill="#1976d2" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
+            </Grid>
+          </Grid>
+        )}
 
         {/* Student / Teacher List */}
         {view === 'students' && <StudentList />}
         {view === 'teachers' && <TeacherList />}
 
-        {/* Bottom Actions */}
         {view !== 'dashboard' && (
           <Stack direction="row" justifyContent="flex-end" spacing={2} mt={3}>
             {view === 'students' && (
