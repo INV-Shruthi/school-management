@@ -19,6 +19,7 @@ import {
   DialogActions,
   TextField,
   MenuItem,
+  Stack,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -27,6 +28,9 @@ const StudentList = () => {
   const [students, setStudents] = useState([]);
   const [count, setCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  
+
+  const [search, setSearch] = useState("");
 
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState({});
@@ -34,10 +38,15 @@ const StudentList = () => {
 
   const token = localStorage.getItem("access_token");
 
-  const fetchStudents = async (pageNumber = 1) => {
+  // Fetch students with pagination + search
+  const fetchStudents = async (pageNumber = 1, searchQuery = "") => {
     try {
-      const res = await axios.get(`students/?page=${pageNumber}`, {
+      const res = await axios.get("students/", {
         headers: { Authorization: `Bearer ${token}` },
+        params: {
+          page: pageNumber,
+          search: searchQuery || undefined,
+        },
       });
       setStudents(res.data.results);
       setCount(Math.ceil(res.data.count / 5));
@@ -50,6 +59,7 @@ const StudentList = () => {
     }
   };
 
+  // Fetch teachers for dropdown
   const fetchTeachers = async () => {
     try {
       const res = await axios.get("teachers/", {
@@ -64,6 +74,7 @@ const StudentList = () => {
     }
   };
 
+  // Export students to CSV
   const exportCSV = async () => {
     try {
       const res = await axios.get("students/export_students_csv/", {
@@ -85,10 +96,11 @@ const StudentList = () => {
     }
   };
 
+  // Edit handlers
   const handleEditOpen = (student) => {
     setEditData({
       ...student,
-      assigned_teacher: student.assigned_teacher || "", 
+      assigned_teacher: student.assigned_teacher || "",
     });
     setEditOpen(true);
   };
@@ -108,7 +120,7 @@ const StudentList = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       handleEditClose();
-      fetchStudents(currentPage);
+      fetchStudents(currentPage, search);
     } catch (err) {
       console.error(
         "Error updating student:",
@@ -117,13 +129,14 @@ const StudentList = () => {
     }
   };
 
+  // Delete student
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this student?")) return;
     try {
       await axios.delete(`students/${id}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchStudents(currentPage);
+      fetchStudents(currentPage, search);
     } catch (err) {
       console.error(
         "Error deleting student:",
@@ -133,13 +146,13 @@ const StudentList = () => {
   };
 
   useEffect(() => {
-    fetchStudents(1);
+    fetchStudents(1, "");
     fetchTeachers();
   }, []);
 
   return (
     <Box>
-      {/* Header & Export */}
+      {/* Header with search + export */}
       <Box
         sx={{
           display: "flex",
@@ -148,15 +161,24 @@ const StudentList = () => {
           alignItems: "center",
         }}
       >
-        <Typography variant="h5" fontWeight="bold">
-          
-        </Typography>
-        <Button variant="outlined" onClick={exportCSV}>
-          Export CSV
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <TextField
+            label="Search Students"
+            variant="outlined"
+            size="small"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              fetchStudents(1, e.target.value);
+            }}
+          />
+          <Button variant="outlined" onClick={exportCSV}>
+            Export CSV
+          </Button>
+        </Stack>
       </Box>
 
-      {/* Table */}
+      {/* Students Table */}
       <TableContainer component={Paper} sx={{ boxShadow: 3, borderRadius: 2 }}>
         <Table>
           <TableHead>
@@ -216,7 +238,7 @@ const StudentList = () => {
         <Pagination
           count={count}
           page={currentPage}
-          onChange={(e, page) => fetchStudents(page)}
+          onChange={(e, page) => fetchStudents(page, search)}
           color="primary"
         />
       </Box>
