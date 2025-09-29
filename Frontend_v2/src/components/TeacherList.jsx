@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from '../api/axiosInstance';
+import axios from "../api/axiosInstance";
 import {
   Box,
   Button,
@@ -19,6 +19,7 @@ import {
   DialogActions,
   TextField,
   MenuItem,
+  Stack,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -28,21 +29,19 @@ const TeacherList = () => {
   const [count, setCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const [search, setSearch] = useState("");
+
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState({});
 
   const token = localStorage.getItem("access_token");
 
-  const fetchTeachers = async (pageNumber = 1) => {
+  const fetchTeachers = async (pageNumber = 1, searchQuery = "") => {
     try {
-      const res = await axios.get(
-        `teachers/?page=${pageNumber}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await axios.get("teachers/", {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { page: pageNumber, search: searchQuery || undefined },
+      });
       setTeachers(res.data.results);
       setCount(Math.ceil(res.data.count / 5));
       setCurrentPage(pageNumber);
@@ -53,15 +52,10 @@ const TeacherList = () => {
 
   const exportCSV = async () => {
     try {
-      const res = await axios.get(
-        "teachers/export_teachers_csv/",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          responseType: "blob",
-        }
-      );
+      const res = await axios.get("teachers/export_teachers_csv/", {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;
@@ -90,15 +84,11 @@ const TeacherList = () => {
 
   const handleEditSave = async () => {
     try {
-      await axios.put(
-        `teachers/${editData.id}/`,
-        editData,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      await axios.put(`teachers/${editData.id}/`, editData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       handleEditClose();
-      fetchTeachers(currentPage);
+      fetchTeachers(currentPage, search);
     } catch (err) {
       console.error("Error updating teacher:", err.response?.data || err.message);
     }
@@ -110,7 +100,7 @@ const TeacherList = () => {
       await axios.delete(`teachers/${id}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchTeachers(currentPage);
+      fetchTeachers(currentPage, search);
     } catch (err) {
       console.error("Error deleting teacher:", err.response?.data || err.message);
     }
@@ -131,8 +121,18 @@ const TeacherList = () => {
           alignItems: "center",
         }}
       >
-        <Typography variant="h5" fontWeight="bold">
-        </Typography>
+        <Stack direction="row" spacing={2}>
+          <TextField
+            label="Search Teachers"
+            variant="outlined"
+            size="small"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              fetchTeachers(1, e.target.value);
+            }}
+          />
+        </Stack>
         <Button variant="outlined" onClick={exportCSV}>
           Export CSV
         </Button>
@@ -188,7 +188,7 @@ const TeacherList = () => {
         <Pagination
           count={count}
           page={currentPage}
-          onChange={(e, page) => fetchTeachers(page)}
+          onChange={(e, page) => fetchTeachers(page, search)}
           color="primary"
         />
       </Box>

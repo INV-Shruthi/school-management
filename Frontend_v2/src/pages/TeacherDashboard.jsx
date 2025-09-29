@@ -22,22 +22,32 @@ import {
 } from "@mui/material";
 import axios from "../api/axiosInstance";
 import { useNavigate } from "react-router-dom";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer
+} from "recharts";
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
 
   const [view, setView] = useState("profile");
   const [teacherProfile, setTeacherProfile] = useState(null);
-
   const [students, setStudents] = useState([]);
   const [studentCount, setStudentCount] = useState(0);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-
   const [examTitle, setExamTitle] = useState("");
   const [questions, setQuestions] = useState([{ text: "" }]);
-
   const [submissions, setSubmissions] = useState([]);
+  const [submissionCount, setSubmissionCount] = useState(0);
+  const [submissionPage, setSubmissionPage] = useState(0);
+  const [submissionRowsPerPage, setSubmissionRowsPerPage] = useState(5);
+  const [chartData, setChartData] = useState([]);
 
   useEffect(() => {
     axios.get("/teachers/").then((res) => {
@@ -57,9 +67,47 @@ export default function TeacherDashboard() {
   };
 
   const fetchSubmissions = () => {
-    axios.get("/student-exams/").then((res) => {
-      setSubmissions(res.data.results || []);
-    });
+    axios
+      .get(
+        `/student-exams/?page=${submissionPage + 1}&page_size=${submissionRowsPerPage}`
+      )
+      .then((res) => {
+        setSubmissions(res.data.results || []);
+        setSubmissionCount(res.data.count || 0);
+      });
+  };
+
+  const fetchAllSubmissionsForChart = async () => {
+    try {
+      let url = "/student-exams/?page=1&page_size=100"; 
+      let allResults = [];
+      let nextUrl = url;
+
+      while (nextUrl) {
+        const res = await axios.get(nextUrl);
+        allResults = [...allResults, ...(res.data.results || [])];
+        nextUrl = res.data.next ? res.data.next.replace(/^http:\/\/localhost:8000\/api/, "") : null;
+      }
+
+      const examMap = {};
+      allResults.forEach((sub) => {
+        if (!examMap[sub.exam_title]) {
+          examMap[sub.exam_title] = { total: 0, count: 0 };
+        }
+        if (sub.score !== null && sub.score !== undefined) {
+          examMap[sub.exam_title].total += sub.score;
+          examMap[sub.exam_title].count += 1;
+        }
+      });
+
+      const formatted = Object.entries(examMap).map(([title, data]) => ({
+        exam: title,
+        avgScore: (data.total / data.count).toFixed(2)
+      }));
+      setChartData(formatted);
+    } catch (err) {
+      console.error("Failed to fetch all submissions for chart", err);
+    }
   };
 
   useEffect(() => {
@@ -67,17 +115,19 @@ export default function TeacherDashboard() {
       fetchStudents();
     }
     if (view === "submissions") {
-      fetchStudents(); 
       fetchSubmissions();
     }
-  }, [view, page, rowsPerPage]);
+    if (view === "profile") {
+      fetchAllSubmissionsForChart();
+    }
+  }, [view, page, rowsPerPage, submissionPage, submissionRowsPerPage]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/");
   };
 
-  // Exam question handlers
+  // Exam Handlers
   const addQuestionField = () => {
     setQuestions([...questions, { text: "" }]);
   };
@@ -101,17 +151,19 @@ export default function TeacherDashboard() {
       alert("Exam created successfully!");
       setExamTitle("");
       setQuestions([{ text: "" }]);
+      fetchAllSubmissionsForChart();
     } catch {
       alert("Failed to create exam");
     }
   };
 
-  // Handle grading 
+  // Grading
   const handleGrade = async (id, score, remarks) => {
     try {
       await axios.patch(`/student-exams/${id}/`, { score, remarks });
       alert("Score updated!");
       fetchSubmissions();
+      fetchAllSubmissionsForChart();
     } catch {
       alert("Failed to update score");
     }
@@ -173,18 +225,39 @@ export default function TeacherDashboard() {
       {/* Main Content */}
       <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
         {view === "profile" && teacherProfile && (
-          <Box>
-            <Typography variant="h5" gutterBottom>
-              My Profile
-            </Typography>
-            <p><b>Name:</b> {teacherProfile.full_name}</p>
-            <p><b>Employee ID:</b> {teacherProfile.employee_id}</p>
-            <p><b>Subject:</b> {teacherProfile.subject_specialization}</p>
-            <p><b>Joining Date:</b> {teacherProfile.date_of_joining}</p>
-            <p><b>Status:</b> {teacherProfile.status}</p>
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+            <Box>
+              <Typography variant="h5" gutterBottom>
+                My Profile
+              </Typography>
+              <p><b>Name:</b> {teacherProfile.full_name}</p>
+              <p><b>Employee ID:</b> {teacherProfile.employee_id}</p>
+              <p><b>Subject:</b> {teacherProfile.subject_specialization}</p>
+              <p><b>Joining Date:</b> {teacherProfile.date_of_joining}</p>
+              <p><b>Status:</b> {teacherProfile.status}</p>
+            </Box>
+            <Box>
+              <Typography variant="h5" gutterBottom>
+                Exam Performance
+              </Typography>
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="exam" interval={0} tick={{ fontSize: 12, angle: -15, textAnchor: 'end' }}/>
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip />
+                    <Bar dataKey="avgScore" fill="#1976d2" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <Typography>No exam data yet</Typography>
+              )}
+            </Box>
           </Box>
         )}
 
+        {/* Students */}
         {view === "students" && (
           <Box>
             <Typography variant="h5" gutterBottom>
@@ -232,6 +305,7 @@ export default function TeacherDashboard() {
           </Box>
         )}
 
+        {/* Create Exam */}
         {view === "createExam" && (
           <Box>
             <Typography variant="h5" gutterBottom>
@@ -267,6 +341,7 @@ export default function TeacherDashboard() {
           </Box>
         )}
 
+        {/* Submissions with Pagination */}
         {view === "submissions" && (
           <Box>
             <Typography variant="h5" gutterBottom>
@@ -288,7 +363,8 @@ export default function TeacherDashboard() {
                   {submissions.map((sub) => (
                     <TableRow key={sub.id}>
                       <TableCell>
-                        {students.find(s => s.id === sub.student)?.student_name || "Unknown"}
+                        {students.find((s) => s.id === sub.student)?.student_name ||
+                          "Unknown"}
                       </TableCell>
                       <TableCell>{sub.exam_title}</TableCell>
                       <TableCell>
@@ -328,6 +404,17 @@ export default function TeacherDashboard() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                component="div"
+                count={submissionCount}
+                page={submissionPage}
+                onPageChange={(e, newPage) => setSubmissionPage(newPage)}
+                rowsPerPage={submissionRowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setSubmissionRowsPerPage(parseInt(e.target.value, 10));
+                  setSubmissionPage(0);
+                }}
+              />
             </TableContainer>
           </Box>
         )}
