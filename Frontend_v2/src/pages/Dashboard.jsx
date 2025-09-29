@@ -24,6 +24,8 @@ import StudentList from '../components/StudentList';
 import TeacherList from '../components/TeacherList';
 import AddStudentModal from '../components/AddStudentModal';
 import AddTeacherModal from '../components/AddTeacherModal';
+import { Brightness4, Brightness7 } from "@mui/icons-material";
+import { useThemeContext } from "../context/ThemeContext";
 import {
   BarChart,
   Bar,
@@ -44,6 +46,7 @@ export default function Dashboard() {
   const [studentCount, setStudentCount] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
+  const { mode, toggleTheme } = useThemeContext();
 
   // Fetch teacher-student counts
   useEffect(() => {
@@ -110,6 +113,7 @@ export default function Dashboard() {
     setView(option);
     setAnchorEl(null);
   };
+  
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -143,7 +147,9 @@ export default function Dashboard() {
                 Teachers
               </MenuItem>
             </Menu>
-
+            <IconButton color="inherit" onClick={toggleTheme} sx={{ mr: 1 }}>
+              {mode === "light" ? <Brightness4 /> : <Brightness7 />}
+            </IconButton>
             <Button color="inherit" onClick={handleLogout}>
               Logout
             </Button>

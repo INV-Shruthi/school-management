@@ -172,10 +172,11 @@ const StudentList = () => {
               fetchStudents(1, e.target.value);
             }}
           />
-          <Button variant="outlined" onClick={exportCSV}>
+          
+        </Stack>
+        <Button variant="outlined" onClick={exportCSV}>
             Export CSV
           </Button>
-        </Stack>
       </Box>
 
       {/* Students Table */}
